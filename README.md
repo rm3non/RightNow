@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/26855944/README.md)
 # Right Now
 
 **Intent-first, identity-delayed connection platform**
@@ -42,6 +41,7 @@ lib/
 firebase/
 ├── firestore.rules            # Security rules
 ├── firestore.indexes.json     # Composite indexes
+├── storage.rules              # Profile & Photo storage security
 └── functions/
     └── src/
         ├── index.ts           # Function exports
@@ -99,11 +99,11 @@ await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 flutter pub get
 ```
 
-### 4. Deploy Firestore Rules & Indexes
+### 4. Deploy Firebase Security Rules & Indexes
 
 ```bash
 firebase login
-firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
 ### 5. Deploy Cloud Functions
@@ -209,9 +209,11 @@ flutter build ios --no-codesign
 
 3. **Cloud Functions for matches**: Match creation is server-side only to prevent spoofing. The `onInterestCreate` trigger atomically creates both match and chat documents.
 
-4. **Content filtering**: Applied both client-side (before send) and enforceable server-side via Firestore rules (future enhancement).
+4. **Content filtering**: All messages stream exclusively through the `sendMessage` Callable Cloud Function in the backend, completely blocking clients from manipulating payload contents directly (no URLs/phone numbers server-enforced).
 
-5. **Scheduled expiry**: Cloud Functions run every 5 minutes to expire posts (60min) and chats (inactivity-based).
+5. **Server-enforced lifecycle update**: Client update rights are completely disabled on core architecture models. `Chats` and `Posts` time out algorithmically via scheduled jobs, with modifying mutations restricted via explicit Differential field `.hasOnly()` restrictions.
+
+6. **Scheduled expiry**: Cloud Functions run every 5 minutes to expire posts (60min) and chats (inactivity-based).
 
 ---
 
