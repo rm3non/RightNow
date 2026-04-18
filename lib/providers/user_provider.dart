@@ -15,6 +15,7 @@ class UserProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   StreamSubscription? _userSub;
+  StreamSubscription? _photoSub;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -26,9 +27,22 @@ class UserProvider extends ChangeNotifier {
   /// Load and listen to current user profile
   void loadUser(String uid) {
     _userSub?.cancel();
+    _photoSub?.cancel();
+    
     _userSub = _userService.getUserStream(uid).listen((user) {
-      _currentUser = user;
+      if (user != null) {
+        _currentUser = user.copyWith(photoUrls: _currentUser?.photoUrls ?? []);
+      } else {
+        _currentUser = null;
+      }
       notifyListeners();
+    });
+
+    _photoSub = _userService.getUserPhotosStream(uid).listen((photos) {
+      if (_currentUser != null) {
+        _currentUser = _currentUser!.copyWith(photoUrls: photos);
+        notifyListeners();
+      }
     });
   }
 
@@ -177,6 +191,7 @@ class UserProvider extends ChangeNotifier {
   @override
   void dispose() {
     _userSub?.cancel();
+    _photoSub?.cancel();
     super.dispose();
   }
 }

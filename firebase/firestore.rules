@@ -35,19 +35,34 @@ service cloud.firestore {
     }
 
     // ========================
+    // USER PHOTOS
+    // ========================
+    match /user_photos/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ========================
     // POSTS (Intents)
     // ========================
     match /posts/{postId} {
-      // Only verified users can read posts (feed access)
-      allow read: if isVerified();
+      // Only verified users can read posts
+      // Safe users can only read posts marked 'safe'
+      allow read: if isVerified() && (
+        resource.data.user_content_mode == 'safe' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.content_mode == 'open_enabled'
+      );
 
       // Users can create posts for themselves
-      allow create: if isAuthenticated()
-        && request.resource.data.user_id == request.auth.uid;
+      allow create: if isVerified()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.user_content_mode == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.content_mode;
 
-      // Users can update their own posts (e.g., expire)
+      // Users can only update to expire their own posts
       allow update: if isAuthenticated()
-        && resource.data.user_id == request.auth.uid;
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'expired';
 
       allow delete: if false;
     }
@@ -93,9 +108,11 @@ service cloud.firestore {
       // Only Cloud Functions create chats
       allow create: if false;
 
-      // Participants can update (for last_message, etc.)
+      // Participants can ONLY update status to block the chat
       allow update: if isAuthenticated()
-        && request.auth.uid in resource.data.participants;
+        && request.auth.uid in resource.data.participants
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'blocked';
 
       allow delete: if false;
 
@@ -105,12 +122,8 @@ service cloud.firestore {
         allow read: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
 
-        // Participants can create messages
-        allow create: if isAuthenticated()
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
-          && request.resource.data.sender_id == request.auth.uid;
-
-        allow update, delete: if false;
+        // No direct write; messages created via Cloud Function
+        allow create, update, delete: if false;
       }
     }
 

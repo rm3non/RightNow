@@ -8,3 +8,4 @@ export { onInterestCreate } from "./matching";
 export { expirePosts, expireChats } from "./expiry";
 export { onNewMessage } from "./notifications";
 export { onReportCreate } from "./moderation";
+export { sendMessage } from "./chat";

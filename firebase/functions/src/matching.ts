@@ -78,6 +78,12 @@ export const onInterestCreate = functions.firestore
       now.toMillis() + 2 * 60 * 60 * 1000
     );
 
+    // Fetch user photos for chat document injection
+    const userAPhotosDoc = await db.collection("user_photos").doc(fromUser).get();
+    const userBPhotosDoc = await db.collection("user_photos").doc(toUser).get();
+    const userAPhotos = userAPhotosDoc.exists ? userAPhotosDoc.data()?.photo_urls || [] : [];
+    const userBPhotos = userBPhotosDoc.exists ? userBPhotosDoc.data()?.photo_urls || [] : [];
+
     const batch = db.batch();
 
     // Create match
@@ -94,6 +100,10 @@ export const onInterestCreate = functions.firestore
     batch.set(db.collection("chats").doc(chatId), {
       chat_id: chatId,
       participants: participants,
+      participant_photos: {
+        [fromUser]: userAPhotos,
+        [toUser]: userBPhotos,
+      },
       created_at: now,
       expires_at: expiresAt,
       status: "active",

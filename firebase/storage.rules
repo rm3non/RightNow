@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Restrict profile photos
+    match /user_photos/{uid}/{imageId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // Restrict verification selfies
+    match /verification_selfies/{uid}/{imageId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // Default deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
